@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<title>比赛号码查询</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(160deg, #fff8f0 0%, #fff 40%, #eef6ff 100%);
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+  .header { text-align: center; margin-bottom: 20px; }
+  .header .badge {
+    display: inline-block; background: #ff7a45; color: #fff; font-size: 12px;
+    padding: 4px 12px; border-radius: 999px; margin-bottom: 10px; letter-spacing: 1px;
+  }
+  .header h1 { font-size: 22px; color: #1a1a1a; line-height: 1.4; }
+  .header p { font-size: 13px; color: #888; margin-top: 6px; }
+  .search-box {
+    background: #fff; border-radius: 16px; padding: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,.08); margin-bottom: 14px;
+  }
+  .search-row { display: flex; gap: 8px; }
+  .search-row input {
+    flex: 1; height: 46px; border: 2px solid #e8e8e8; border-radius: 12px;
+    padding: 0 14px; font-size: 16px; outline: none; transition: border .2s;
+    background: #fafafa;
+  }
+  .search-row input:focus { border-color: #ff7a45; background: #fff; }
+  .search-row button {
+    height: 46px; padding: 0 20px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, #ff7a45, #ff5f3c); color: #fff;
+    font-size: 16px; font-weight: 600; cursor: pointer; white-space: nowrap;
+    box-shadow: 0 4px 12px rgba(255,95,60,.35);
+  }
+  .search-row button:active { transform: scale(.97); }
+  .tips {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px;
+  }
+  .tips span {
+    font-size: 12px; color: #777; background: #f5f5f5; border-radius: 999px; padding: 3px 10px;
+  }
+  .hint { font-size: 12px; color: #aaa; text-align: center; margin-bottom: 14px; }
+  .stats { font-size: 12px; color: #999; text-align: center; margin-bottom: 4px; }
+  .result-card {
+    background: #fff; border-radius: 14px; padding: 16px 18px; margin-bottom: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,.06); border-left: 5px solid #ff7a45;
+    animation: slideIn .25s ease;
+  }
+  @keyframes slideIn { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: none;} }
+  .result-card .tag {
+    display: inline-block; font-size: 11px; background: #fff3e8; color: #ff7a45;
+    padding: 2px 8px; border-radius: 6px; margin-bottom: 8px;
+  }
+  .result-card .name-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .result-card .parent { font-size: 18px; font-weight: 700; color: #222; }
+  .result-card .child { font-size: 15px; color: #555; }
+  .result-card .race {
+    font-size: 13px; color: #ff7a45; font-weight: 700; background: #fff3e8;
+    padding: 2px 10px; border-radius: 999px; margin-top: 6px; display: inline-block;
+  }
+  .empty {
+    text-align: center; color: #999; padding: 40px 0; font-size: 14px;
+  }
+  .empty .big { font-size: 40px; margin-bottom: 10px; }
+  .footer { text-align: center; font-size: 11px; color: #bbb; margin-top: 24px; line-height: 1.8; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <span class="badge">2026 秋季亲子趣味运动会</span>
+    <h1>比赛号码查询</h1>
+    <p>输入家长或孩子姓名，即可查询比赛号码</p>
+  </div>
+
+  <div class="search-box">
+    <div class="search-row">
+      <input id="kw" type="text" placeholder="家长姓名 / 孩子姓名 / 比赛号" autocomplete="off">
+      <button id="btn">查询</button>
+    </div>
+    <div class="tips">
+      <span>示例：王帅</span>
+      <span>示例：李翌搏</span>
+      <span>示例：A001</span>
+    </div>
+  </div>
+  <div class="hint">支持姓名模糊搜索，一个家庭多个孩子会全部列出</div>
+  <div class="stats" id="stats"></div>
+  <div id="list"></div>
+
+  <div class="footer">
+    数据来源：用友秋季儿童号码簿（共 <span id="cnt"></span> 人）<br>
+    本页面仅用于运动会当天查询比赛号码，不显示任何联系方式
+  </div>
+
+<script>
+var DATA = [{"no": 1, "parent": "王帅", "race_no": "A001", "child": "李翌搏", "gender": "男"}, {"no": 2, "parent": "杨林", "race_no": "A002", "child": "杨一凡", "gender": "男"}, {"no": 3, "parent": "侯美美", "race_no": "A003", "child": "商诗语", "gender": "女"}, {"no": 4, "parent": "李明阳", "race_no": "A004", "child": "李梦璇", "gender": "女"}, {"no": 5, "parent": "苗云", "race_no": "A005", "child": "梁树", "gender": "男"}, {"no": 6, "parent": "张滨", "race_no": "A006", "child": "张清怡", "gender": "女"}, {"no": 7, "parent": "魏洪亮", "race_no": "A007", "child": "魏雨诺", "gender": "女"}, {"no": 8, "parent": "魏洪亮", "race_no": "A008", "child": "魏雨橙", "gender": "女"}, {"no": 9, "parent": "孙健", "race_no": "A009", "child": "孙如羿", "gender": "女"}, {"no": 10, "parent": "薛苗芳", "race_no": "A010", "child": "李嘉乐", "gender": "男"}, {"no": 11, "parent": "何兵", "race_no": "A011", "child": "何雨青", "gender": "女"}, {"no": 12, "parent": "杨孟星", "race_no": "A012", "child": "肖竣熙", "gender": "男"}, {"no": 13, "parent": "严祥", "race_no": "A013", "child": "严奕辰", "gender": "女"}, {"no": 14, "parent": "严祥", "race_no": "A014", "child": "杨霖钦", "gender": "女"}, {"no": 15, "parent": "甄双双", "race_no": "A015", "child": "赵若轩", "gender": "男"}, {"no": 16, "parent": "甄双双", "race_no": "A016", "child": "陈雨铮", "gender": "男"}, {"no": 17, "parent": "朱威", "race_no": "A017", "child": "朱雯鸢", "gender": "女"}, {"no": 18, "parent": "李文", "race_no": "A018", "child": "李姝彤", "gender": "女"}, {"no": 19, "parent": "刘录", "race_no": "A019", "child": "高睿泽", "gender": "男"}, {"no": 20, "parent": "刘聪聪", "race_no": "A020", "child": "孙星野", "gender": "男"}, {"no": 21, "parent": "赵炜翔", "race_no": "A021", "child": "赵子来", "gender": "男"}, {"no": 22, "parent": "巩庆昌", "race_no": "A022", "child": "巩馨泽", "gender": "女"}, {"no": 23, "parent": "巩庆昌", "race_no": "A023", "child": "巩昕岚", "gender": "女"}, {"no": 24, "parent": "肖庚久", "race_no": "A024", "child": "肖冉", "gender": "男"}, {"no": 25, "parent": "赵玉龙", "race_no": "A025", "child": "赵轩浩", "gender": "男"}, {"no": 26, "parent": "赵玉龙", "race_no": "A026", "child": "赵荣浩", "gender": "男"}, {"no": 27, "parent": "石静", "race_no": "A027", "child": "崔筱沐", "gender": "女"}, {"no": 28, "parent": "李艳娜", "race_no": "A028", "child": "钮阳奕", "gender": "男"}, {"no": 29, "parent": "李艳娜", "race_no": "A029", "child": "李泽霖", "gender": "男"}, {"no": 30, "parent": "冯娇娇", "race_no": "A030", "child": "张景贻", "gender": "女"}, {"no": 31, "parent": "聂婧如", "race_no": "A031", "child": "李东烨", "gender": "男"}, {"no": 32, "parent": "张晓飞", "race_no": "A032", "child": "炊安宁", "gender": "女"}, {"no": 33, "parent": "张晓飞", "race_no": "A033", "child": "炊舒宁", "gender": "女"}, {"no": 34, "parent": "牛晓争", "race_no": "A034", "child": "牛梓萱", "gender": "女"}, {"no": 35, "parent": "牛晓争", "race_no": "A035", "child": "牛一铭", "gender": "男"}, {"no": 36, "parent": "黄洁", "race_no": "A036", "child": "潘思彤", "gender": "女"}, {"no": 37, "parent": "王旭静", "race_no": "A037", "child": "刘源荀", "gender": "男"}, {"no": 38, "parent": "王立奇", "race_no": "A038", "child": "王一涵", "gender": "女"}, {"no": 39, "parent": "王小飞", "race_no": "A039", "child": "王雨宸", "gender": "男"}, {"no": 40, "parent": "张春福", "race_no": "A040", "child": "张雨柠", "gender": "女"}, {"no": 41, "parent": "杨子坤", "race_no": "A041", "child": "杨乐辰", "gender": "男"}, {"no": 42, "parent": "王帅", "race_no": "A042", "child": "王子睿", "gender": "男"}, {"no": 43, "parent": "张贝贝", "race_no": "A043", "child": "沈玥", "gender": "女"}, {"no": 44, "parent": "袁毅", "race_no": "A044", "child": "袁歆鹤", "gender": "女"}, {"no": 45, "parent": "袁毅", "race_no": "A045", "child": "高雨赫", "gender": "男"}, {"no": 46, "parent": "麦玉燕", "race_no": "A046", "child": "陈文熙", "gender": "男"}, {"no": 47, "parent": "麦玉燕", "race_no": "A047", "child": "陈文诏", "gender": "男"}, {"no": 48, "parent": "刘丽", "race_no": "A048", "child": "史佳宜", "gender": "女"}, {"no": 49, "parent": "李宁", "race_no": "A049", "child": "李宇奇", "gender": "男"}, {"no": 50, "parent": "张玉", "race_no": "A050", "child": "陈怡彤", "gender": "女"}, {"no": 51, "parent": "张玉", "race_no": "A051", "child": "陈则润", "gender": "男"}, {"no": 52, "parent": "金基勇", "race_no": "A052", "child": "金希真", "gender": "女"}, {"no": 53, "parent": "陈雷", "race_no": "A053", "child": "杨一峰", "gender": "男"}, {"no": 54, "parent": "刘洋", "race_no": "A054", "child": "李诗韵", "gender": "女"}, {"no": 55, "parent": "颜丙鑫", "race_no": "A055", "child": "颜培元", "gender": "男"}, {"no": 56, "parent": "杨会霞", "race_no": "A056", "child": "刘玉杨", "gender": "女"}, {"no": 57, "parent": "程坤", "race_no": "A057", "child": "陈奕鸣", "gender": "男"}, {"no": 58, "parent": "于颖", "race_no": "A058", "child": "林其乐", "gender": "女"}, {"no": 59, "parent": "郭晶晶", "race_no": "A059", "child": "梁靖涵", "gender": "女"}, {"no": 60, "parent": "黄铮", "race_no": "A060", "child": "黄佳茵", "gender": "女"}, {"no": 61, "parent": "熊湘松", "race_no": "A061", "child": "李天瀛", "gender": "男"}, {"no": 62, "parent": "熊湘松", "race_no": "A062", "child": "李天祺", "gender": "男"}, {"no": 63, "parent": "韩玲芝", "race_no": "A063", "child": "张一涵", "gender": "女"}, {"no": 64, "parent": "韩玲芝", "race_no": "A064", "child": "张艺凡", "gender": "女"}, {"no": 65, "parent": "杨少风", "race_no": "A065", "child": "杨诗昕", "gender": "女"}, {"no": 66, "parent": "周予豪", "race_no": "A066", "child": "周岳霖", "gender": "男"}, {"no": 67, "parent": "刘震芸", "race_no": "A067", "child": "刘知源", "gender": "男"}, {"no": 68, "parent": "王甲纲", "race_no": "A068", "child": "王若宇", "gender": "男"}, {"no": 69, "parent": "唐慧芳", "race_no": "A069", "child": "柳云坤", "gender": "女"}, {"no": 70, "parent": "唐慧芳", "race_no": "A070", "child": "柳云锦", "gender": "女"}, {"no": 71, "parent": "文吉", "race_no": "A071", "child": "文烁清", "gender": "女"}, {"no": 72, "parent": "文吉", "race_no": "A072", "child": "文烁浩", "gender": "男"}, {"no": 73, "parent": "魏咸斌", "race_no": "A073", "child": "魏方宇", "gender": "男"}, {"no": 74, "parent": "孙艳艳", "race_no": "A074", "child": "陈禹延", "gender": "男"}, {"no": 75, "parent": "于成璐", "race_no": "A075", "child": "张晞盈", "gender": "女"}, {"no": 76, "parent": "刘超", "race_no": "A076", "child": "刘歆苒", "gender": "女"}, {"no": 77, "parent": "杜亚搏", "race_no": "A077", "child": "杜泽熠", "gender": "男"}, {"no": 78, "parent": "王胜辉", "race_no": "A078", "child": "王墨竹", "gender": "男"}, {"no": 79, "parent": "郝剑华", "race_no": "A079", "child": "郝乐语", "gender": "女"}, {"no": 80, "parent": "王曼辞", "race_no": "A080", "child": "史圣懿", "gender": "男"}, {"no": 81, "parent": "王曼辞", "race_no": "A081", "child": "史圣寒", "gender": "男"}, {"no": 82, "parent": "耿涛", "race_no": "A082", "child": "耿安曈", "gender": "男"}, {"no": 83, "parent": "周许辉", "race_no": "A083", "child": "周子衿", "gender": "女"}, {"no": 84, "parent": "张俊超", "race_no": "A084", "child": "张嘉禾", "gender": "男"}, {"no": 85, "parent": "王璐莹", "race_no": "A085", "child": "梁语菲", "gender": "女"}, {"no": 86, "parent": "郝建萍", "race_no": "A086", "child": "程佳玟", "gender": "女"}, {"no": 87, "parent": "李幸博", "race_no": "A087", "child": "李佳音", "gender": "女"}, {"no": 88, "parent": "董晨", "race_no": "A088", "child": "李一珩", "gender": "男"}, {"no": 89, "parent": "董晨", "race_no": "A089", "child": "吴艺晗", "gender": "女"}, {"no": 90, "parent": "刘宇晨", "race_no": "A090", "child": "刘易安", "gender": "男"}, {"no": 91, "parent": "刘瑞军", "race_no": "A091", "child": "杨开颖", "gender": "女"}, {"no": 92, "parent": "张曜庭", "race_no": "A092", "child": "张馨怡", "gender": "女"}, {"no": 93, "parent": "龚鑫", "race_no": "A093", "child": "于易", "gender": "男"}, {"no": 94, "parent": "马晓玉", "race_no": "A094", "child": "王馨莹", "gender": "女"}, {"no": 95, "parent": "杨超跃", "race_no": "A095", "child": "顾木易", "gender": "男"}, {"no": 96, "parent": "杨超跃", "race_no": "A096", "child": "顾依然", "gender": "女"}, {"no": 97, "parent": "赵晓林", "race_no": "A097", "child": "翟子锐", "gender": "男"}, {"no": 98, "parent": "黄雪娇", "race_no": "A098", "child": "张乐兮", "gender": "女"}, {"no": 99, "parent": "黄雪娇", "race_no": "A099", "child": "张允兮", "gender": "女"}, {"no": 100, "parent": "马明", "race_no": "A100", "child": "许泽葳", "gender": "男"}, {"no": 101, "parent": "徐宏伟", "race_no": "A101", "child": "徐佳欣", "gender": "女"}, {"no": 102, "parent": "李亚敏", "race_no": "A102", "child": "封芷阳", "gender": "男"}, {"no": 103, "parent": "李凌飞", "race_no": "A103", "child": "王婧琛", "gender": "女"}, {"no": 104, "parent": "崔金枝", "race_no": "A104", "child": "于子涵", "gender": "女"}, {"no": 105, "parent": "储凯华", "race_no": "A105", "child": "储怀瑾", "gender": "女"}, {"no": 106, "parent": "李亚方", "race_no": "A106", "child": "李舒珩", "gender": "女"}, {"no": 107, "parent": "肖利建", "race_no": "A107", "child": "肖智文", "gender": "男"}, {"no": 108, "parent": "肖利建", "race_no": "A108", "child": "王永贤", "gender": "女"}, {"no": 109, "parent": "范晓洁", "race_no": "A109", "child": "吴汐然", "gender": "女"}, {"no": 110, "parent": "范晓洁", "race_no": "A110", "child": "杨舒童", "gender": "女"}, {"no": 111, "parent": "郭海波", "race_no": "A111", "child": "郭致远", "gender": "男"}, {"no": 112, "parent": "赵召", "race_no": "A112", "child": "赵元翊", "gender": "男"}, {"no": 113, "parent": "魏红军", "race_no": "A113", "child": "魏青青", "gender": "女"}, {"no": 114, "parent": "陈玉", "race_no": "A114", "child": "胡子清", "gender": "女"}, {"no": 115, "parent": "郗璨璨", "race_no": "A115", "child": "张一壹", "gender": "男"}, {"no": 116, "parent": "郗璨璨", "race_no": "A116", "child": "漆卫铭", "gender": "男"}, {"no": 117, "parent": "张亚娟", "race_no": "A117", "child": "史祎冉", "gender": "女"}, {"no": 118, "parent": "畅建", "race_no": "A118", "child": "畅想", "gender": "女"}, {"no": 119, "parent": "史高占", "race_no": "A119", "child": "史梓诺", "gender": "女"}, {"no": 120, "parent": "史高占", "race_no": "A120", "child": "史乐桐", "gender": "女"}, {"no": 121, "parent": "王江伟", "race_no": "A121", "child": "王羿萱", "gender": "女"}, {"no": 122, "parent": "王江伟", "race_no": "A122", "child": "王羿晴", "gender": "女"}, {"no": 123, "parent": "赵毅珍", "race_no": "A123", "child": "黎悦颖", "gender": "女"}, {"no": 124, "parent": "赵毅珍", "race_no": "A124", "child": "黎仲安", "gender": "男"}, {"no": 125, "parent": "王相平", "race_no": "A125", "child": "王传悦", "gender": "女"}, {"no": 126, "parent": "冯媛", "race_no": "A126", "child": "王曦冉", "gender": "男"}, {"no": 127, "parent": "张余博", "race_no": "A127", "child": "张元硕", "gender": "男"}, {"no": 128, "parent": "张余博", "race_no": "A128", "child": "张元启", "gender": "男"}, {"no": 129, "parent": "江智慧", "race_no": "A129", "child": "江依珞", "gender": "女"}, {"no": 130, "parent": "宋倞", "race_no": "A130", "child": "王麦岐", "gender": "女"}, {"no": 131, "parent": "郝晓蓉", "race_no": "A131", "child": "张天奕", "gender": "男"}, {"no": 132, "parent": "陈冬雪", "race_no": "A132", "child": "孙亦宸", "gender": "男"}, {"no": 133, "parent": "朱冠宇", "race_no": "A133", "child": "朱习铭", "gender": "男"}, {"no": 134, "parent": "吴冬燕", "race_no": "A134", "child": "孙晟恺", "gender": "男"}, {"no": 135, "parent": "吴冬燕", "race_no": "A135", "child": "陈沫涵", "gender": "男"}, {"no": 136, "parent": "原晶晶", "race_no": "A136", "child": "徐乐源", "gender": "男"}, {"no": 137, "parent": "周循", "race_no": "A137", "child": "王婤颖", "gender": "女"}, {"no": 138, "parent": "周循", "race_no": "A138", "child": "王思周", "gender": "男"}, {"no": 139, "parent": "赵俊英", "race_no": "A139", "child": "赵研扉", "gender": "女"}, {"no": 140, "parent": "白海鹏", "race_no": "A140", "child": "高梓萌", "gender": "女"}, {"no": 141, "parent": "曹丹", "race_no": "A141", "child": "张芷寻", "gender": "女"}, {"no": 142, "parent": "苏波", "race_no": "A142", "child": "苏靖桐", "gender": "男"}, {"no": 143, "parent": "刘娜", "race_no": "A143", "child": "周一柠", "gender": "女"}, {"no": 144, "parent": "苏东升", "race_no": "A144", "child": "苏珩", "gender": "男"}, {"no": 145, "parent": "张小红", "race_no": "A145", "child": "黄婉婧", "gender": "女"}, {"no": 146, "parent": "李东伟", "race_no": "A146", "child": "李温莹", "gender": "女"}, {"no": 147, "parent": "燕三艳", "race_no": "A147", "child": "张妍伊", "gender": "女"}, {"no": 148, "parent": "张凤至", "race_no": "A148", "child": "周靖哲", "gender": "男"}, {"no": 149, "parent": "李晓", "race_no": "A149", "child": "杨若熙", "gender": "女"}, {"no": 150, "parent": "姚向茹", "race_no": "A150", "child": "王苏豫", "gender": "男"}, {"no": 151, "parent": "徐文辉", "race_no": "A151", "child": "徐佳湙", "gender": "女"}, {"no": 152, "parent": "徐文辉", "race_no": "A152", "child": "徐佳沁", "gender": "女"}, {"no": 153, "parent": "吴建龙", "race_no": "A153", "child": "邢子骞", "gender": "男"}, {"no": 154, "parent": "郭晓宇", "race_no": "A154", "child": "王嘉毅", "gender": "男"}, {"no": 155, "parent": "雷雨", "race_no": "A155", "child": "胡展颜", "gender": "女"}, {"no": 156, "parent": "张迁", "race_no": "A156", "child": "曾钰童", "gender": "女"}, {"no": 157, "parent": "史铭芳", "race_no": "A157", "child": "于博帆", "gender": "男"}, {"no": 158, "parent": "李超", "race_no": "A158", "child": "李麦琪", "gender": "女"}, {"no": 159, "parent": "魏冬梅", "race_no": "A159", "child": "徐一格", "gender": "男"}, {"no": 160, "parent": "韩红霞", "race_no": "A160", "child": "范艺茜", "gender": "女"}, {"no": 161, "parent": "韩红霞", "race_no": "A161", "child": "韩悠然", "gender": "女"}, {"no": 162, "parent": "王希建", "race_no": "A162", "child": "王灿", "gender": "男"}, {"no": 163, "parent": "王辛", "race_no": "A163", "child": "王珮权", "gender": "男"}, {"no": 164, "parent": "王辛", "race_no": "A164", "child": "丰钰轩", "gender": "男"}, {"no": 165, "parent": "段李敏", "race_no": "A165", "child": "段伊禾", "gender": "女"}, {"no": 166, "parent": "张敬", "race_no": "A166", "child": "孙翌然", "gender": "男"}, {"no": 167, "parent": "李妹", "race_no": "A167", "child": "杨明远", "gender": "男"}, {"no": 168, "parent": "赵艳玲", "race_no": "A168", "child": "孙正悦", "gender": "男"}, {"no": 169, "parent": "郭云文", "race_no": "A169", "child": "吴宪好", "gender": "男"}, {"no": 170, "parent": "吕玲", "race_no": "A170", "child": "刘一杺", "gender": "女"}, {"no": 171, "parent": "吕玲", "race_no": "A171", "child": "刘姝堃", "gender": "女"}, {"no": 172, "parent": "杜小丽", "race_no": "A172", "child": "周坤毅", "gender": "男"}, {"no": 173, "parent": "杜小丽", "race_no": "A173", "child": "周坤元", "gender": "男"}, {"no": 174, "parent": "张徐锋", "race_no": "A174", "child": "张佑宁", "gender": "男"}, {"no": 175, "parent": "苗智超", "race_no": "A175", "child": "苗灵煊", "gender": "女"}, {"no": 176, "parent": "田娜", "race_no": "A176", "child": "张皓景", "gender": "男"}, {"no": 177, "parent": "郑文建", "race_no": "A177", "child": "郑世泽", "gender": "男"}, {"no": 178, "parent": "焦学文", "race_no": "A178", "child": "焦琏钰", "gender": "男"}, {"no": 179, "parent": "焦学文", "race_no": "A179", "child": "焦连佳", "gender": "女"}, {"no": 180, "parent": "李苗苗", "race_no": "A180", "child": "陈卓歆", "gender": "女"}, {"no": 181, "parent": "崔晓丽", "race_no": "A181", "child": "杨鸿熠", "gender": "男"}, {"no": 182, "parent": "渠文晋", "race_no": "A182", "child": "余沐洋", "gender": "男"}, {"no": 183, "parent": "王金鹏", "race_no": "A183", "child": "王米诺", "gender": "女"}, {"no": 184, "parent": "夏永", "race_no": "A184", "child": "杜嘉昱", "gender": "男"}, {"no": 185, "parent": "尹晓慧", "race_no": "A185", "child": "陈明悦", "gender": "女"}, {"no": 186, "parent": "陈季平", "race_no": "A186", "child": "全芷萱", "gender": "女"}, {"no": 187, "parent": "陈英", "race_no": "A187", "child": "张艺洋", "gender": "男"}, {"no": 188, "parent": "王佳慧", "race_no": "A188", "child": "吴承泽", "gender": "男"}, {"no": 189, "parent": "刘青", "race_no": "A189", "child": "刘可可", "gender": "女"}, {"no": 190, "parent": "刘青", "race_no": "A190", "child": "刘乐乐", "gender": "女"}, {"no": 191, "parent": "鞠兴华", "race_no": "A191", "child": "鞠乙墨", "gender": "男"}, {"no": 192, "parent": "杨洪波", "race_no": "A192", "child": "杨露晨", "gender": "女"}, {"no": 193, "parent": "冯武武", "race_no": "A193", "child": "冯乐潼", "gender": "男"}, {"no": 194, "parent": "刘皓冉", "race_no": "A194", "child": "刘依依", "gender": "女"}, {"no": 195, "parent": "轩施慧", "race_no": "A195", "child": "轩辕潇", "gender": "女"}, {"no": 196, "parent": "霍瑞明", "race_no": "A196", "child": "霍安欣", "gender": "女"}, {"no": 197, "parent": "阙龙会", "race_no": "A197", "child": "彭玥", "gender": "女"}, {"no": 198, "parent": "乔凡", "race_no": "A198", "child": "乔晋", "gender": "男"}, {"no": 199, "parent": "袁万尚", "race_no": "A199", "child": "袁显垚", "gender": "男"}, {"no": 200, "parent": "孙雪飞", "race_no": "A200", "child": "孙沐涵", "gender": "女"}, {"no": 201, "parent": "薛文", "race_no": "A201", "child": "杨宏峥", "gender": "男"}, {"no": 202, "parent": "翟彦周", "race_no": "A202", "child": "翟翊可", "gender": "男"}, {"no": 203, "parent": "倪金彪", "race_no": "A203", "child": "倪璟澄", "gender": "男"}, {"no": 204, "parent": "吴双洋", "race_no": "A204", "child": "吴懿兮", "gender": "男"}, {"no": 205, "parent": "雒彩莲", "race_no": "A205", "child": "柴沐飞", "gender": "女"}, {"no": 206, "parent": "雒彩莲", "race_no": "A206", "child": "柴沐飞", "gender": "女"}, {"no": 207, "parent": "武洋", "race_no": "A207", "child": "武书宸", "gender": "男"}, {"no": 208, "parent": "吴廷锋", "race_no": "A208", "child": "吴嘉一", "gender": "女"}, {"no": 209, "parent": "武文娟", "race_no": "A209", "child": "王沐晞", "gender": "女"}, {"no": 210, "parent": "武文娟", "race_no": "A210", "child": "王沐晓", "gender": "女"}, {"no": 211, "parent": "张博凯", "race_no": "A211", "child": "张芮彤", "gender": "女"}, {"no": 212, "parent": "邢晓敏", "race_no": "A212", "child": "邢采薇", "gender": "女"}, {"no": 213, "parent": "邢晓敏", "race_no": "A213", "child": "邢采心", "gender": "女"}, {"no": 214, "parent": "安静", "race_no": "A214", "child": "王溪桐", "gender": "女"}, {"no": 215, "parent": "徐成", "race_no": "A215", "child": "徐露晗", "gender": "女"}, {"no": 216, "parent": "陈侃", "race_no": "A216", "child": "曾楚云", "gender": "女"}, {"no": 217, "parent": "叶卫飞", "race_no": "A217", "child": "孙楚涵", "gender": "女"}, {"no": 218, "parent": "段研研", "race_no": "A218", "child": "张明诚", "gender": "男"}, {"no": 219, "parent": "陈丹", "race_no": "A219", "child": "郑驰恩", "gender": "男"}, {"no": 220, "parent": "蔡望雨", "race_no": "A220", "child": "陈梓铭", "gender": "男"}, {"no": 221, "parent": "蔡望雨", "race_no": "A221", "child": "陈梓麟", "gender": "男"}, {"no": 222, "parent": "丁亮", "race_no": "A222", "child": "丁爱嘉", "gender": "女"}, {"no": 223, "parent": "刘贞", "race_no": "A223", "child": "郭翊珩", "gender": "男"}, {"no": 224, "parent": "徐涛涛", "race_no": "A224", "child": "徐逸安", "gender": "女"}, {"no": 225, "parent": "李辉", "race_no": "A225", "child": "李沐瑶", "gender": "女"}, {"no": 226, "parent": "李辉", "race_no": "A226", "child": "李沐琪", "gender": "女"}, {"no": 227, "parent": "王灿", "race_no": "A227", "child": "冯昇戎", "gender": "男"}, {"no": 228, "parent": "苏甲寅", "race_no": "A228", "child": "苏淼", "gender": "男"}, {"no": 229, "parent": "逄居升", "race_no": "A229", "child": "逄欣冉", "gender": "女"}, {"no": 230, "parent": "李亚玟", "race_no": "A230", "child": "陈奕森", "gender": "男"}, {"no": 231, "parent": "耿笑威", "race_no": "A231", "child": "单伊铭", "gender": "女"}, {"no": 232, "parent": "闫霞", "race_no": "A232", "child": "周泽皓", "gender": "男"}, {"no": 233, "parent": "江运强", "race_no": "A233", "child": "江沐霏", "gender": "女"}, {"no": 234, "parent": "崔玲玲", "race_no": "A234", "child": "李昕玥", "gender": "女"}, {"no": 235, "parent": "崔玲玲", "race_no": "A235", "child": "李凌皓", "gender": "男"}, {"no": 236, "parent": "马增盛", "race_no": "A236", "child": "马铄哲", "gender": "男"}, {"no": 237, "parent": "王爱红", "race_no": "A237", "child": "张云舒", "gender": "女"}, {"no": 238, "parent": "代俊朴", "race_no": "A238", "child": "代吉忱", "gender": "男"}, {"no": 239, "parent": "王守道", "race_no": "A239", "child": "王夕糯", "gender": "女"}, {"no": 240, "parent": "谢菲", "race_no": "A240", "child": "全芷辰", "gender": "男"}, {"no": 241, "parent": "谢菲", "race_no": "A241", "child": "全芷仪", "gender": "女"}, {"no": 242, "parent": "崔丹丹", "race_no": "A242", "child": "李宇泽", "gender": "男"}, {"no": 243, "parent": "崔丹丹", "race_no": "A243", "child": "李语凡", "gender": "女"}, {"no": 244, "parent": "韩亮亮", "race_no": "A244", "child": "韩以勒", "gender": "男"}, {"no": 245, "parent": "赵洁", "race_no": "A245", "child": "钱满薏", "gender": "女"}, {"no": 246, "parent": "李恒", "race_no": "A246", "child": "李之昂", "gender": "男"}, {"no": 247, "parent": "冯海燕", "race_no": "A247", "child": "李沐遥", "gender": "女"}, {"no": 248, "parent": "赵春谱", "race_no": "A248", "child": "赵奕彤", "gender": "女"}, {"no": 249, "parent": "陆莹", "race_no": "A249", "child": "金兰宵", "gender": "男"}, {"no": 250, "parent": "郑伟彪", "race_no": "A250", "child": "郑沐夏", "gender": "男"}, {"no": 251, "parent": "刘隐", "race_no": "A251", "child": "刘梓越", "gender": "男"}, {"no": 252, "parent": "贾晨譞", "race_no": "A252", "child": "郝一澄", "gender": "女"}, {"no": 253, "parent": "贾晨譞", "race_no": "A253", "child": "郝一诺", "gender": "女"}, {"no": 254, "parent": "王春莅", "race_no": "A254", "child": "李先正", "gender": "男"}, {"no": 255, "parent": "慈树新", "race_no": "A255", "child": "张若镝", "gender": "女"}, {"no": 256, "parent": "侯飞飞", "race_no": "A256", "child": "侯语", "gender": "女"}, {"no": 257, "parent": "漆键", "race_no": "A257", "child": "漆卫铭", "gender": "男"}, {"no": 258, "parent": "袁婧", "race_no": "A258", "child": "李佑呥", "gender": "男"}, {"no": 259, "parent": "袁婧", "race_no": "A259", "child": "白芊艺", "gender": "女"}, {"no": 260, "parent": "杨静", "race_no": "A260", "child": "杨诺涵", "gender": "女"}, {"no": 261, "parent": "杨静", "race_no": "A261", "child": "杨睿涵", "gender": "男"}, {"no": 262, "parent": "薛长虹", "race_no": "A262", "child": "薛以墨", "gender": "男"}, {"no": 263, "parent": "徐金翠", "race_no": "A263", "child": "张隽楠", "gender": "男"}, {"no": 264, "parent": "徐金翠", "race_no": "A264", "child": "张隽涵", "gender": "男"}, {"no": 265, "parent": "张立杰", "race_no": "A265", "child": "孙延彦", "gender": "女"}, {"no": 266, "parent": "郑巧慧", "race_no": "A266", "child": "冯泽羽", "gender": "男"}, {"no": 267, "parent": "郑巧慧", "race_no": "A267", "child": "武书衡", "gender": "男"}, {"no": 268, "parent": "刘英文", "race_no": "A268", "child": "刘禹硕", "gender": "男"}, {"no": 269, "parent": "高志强", "race_no": "A269", "child": "高心玥", "gender": "女"}, {"no": 270, "parent": "周磊", "race_no": "A270", "child": "周景彦", "gender": "男"}, {"no": 271, "parent": "湛小峰", "race_no": "A271", "child": "湛茜潼", "gender": "女"}, {"no": 272, "parent": "谢英斌", "race_no": "A272", "child": "谢雨锡", "gender": "女"}, {"no": 273, "parent": "谢英斌", "race_no": "A273", "child": "谢佳录", "gender": "女"}, {"no": 274, "parent": "武文杰", "race_no": "A274", "child": "武诗萌", "gender": "女"}, {"no": 275, "parent": "李春影", "race_no": "A275", "child": "刘瑞宁", "gender": "男"}, {"no": 276, "parent": "吕晓静", "race_no": "A276", "child": "马涵玥", "gender": "女"}, {"no": 277, "parent": "王红海", "race_no": "A277", "child": "王小宝", "gender": "男"}, {"no": 278, "parent": "王国玉", "race_no": "A278", "child": "王艺宁", "gender": "女"}, {"no": 279, "parent": "刘石磊", "race_no": "A279", "child": "刘千屹", "gender": "男"}, {"no": 280, "parent": "李坤", "race_no": "A280", "child": "李史露", "gender": "女"}, {"no": 281, "parent": "李坤", "race_no": "A281", "child": "史若李", "gender": "女"}, {"no": 282, "parent": "杨强", "race_no": "A282", "child": "杨竣文", "gender": "男"}, {"no": 283, "parent": "许福来", "race_no": "A283", "child": "许宸语", "gender": "女"}, {"no": 284, "parent": "张晓红", "race_no": "A284", "child": "小北", "gender": "女"}];
+var listEl = document.getElementById('list');
+var kwEl = document.getElementById('kw');
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function normalize(s) {
+  return String(s||'').trim().toLowerCase().replace(/\s+/g,'');
+}
+
+function matchRace(q, raceNo) {
+  var r = normalize(raceNo); // a001
+  var qq = normalize(q);
+  // a001 / 001 / 1 -> 1 ; only exact number match (not prefix)
+  if (/^[a]?\d+$/.test(qq)) {
+    var num = parseInt(qq.replace(/^a/, '').replace(/^0+/, ''), 10);
+    var raceNum = parseInt(r.replace(/^a/, '').replace(/^0+/, ''), 10);
+    if (!isNaN(num) && num === raceNum) return true;
+  }
+  return r === qq;
+}
+
+function search(q) {
+  q = q.trim();
+  if (!q) return [];
+  var nq = normalize(q);
+  if (!nq) return [];
+
+  // exact matches first
+  var exact = DATA.filter(function(r){
+    return normalize(r.parent) === nq || normalize(r.child) === nq;
+  });
+  if (exact.length) return exact;
+
+  // race number
+  var race = DATA.filter(function(r){ return matchRace(q, r.race_no); });
+  if (race.length) return race;
+
+  // fuzzy substring on parent or child
+  var fuzzy = DATA.filter(function(r){
+    return normalize(r.parent).indexOf(nq) !== -1 || normalize(r.child).indexOf(nq) !== -1;
+  });
+  return fuzzy;
+}
+
+function render(results, q) {
+  listEl.innerHTML = '';
+  if (!results.length) {
+    listEl.innerHTML = '<div class="empty"><div class="big">🤔</div>没有找到与「' + esc(q) + '」匹配的记录<br>请检查姓名或比赛号是否输入正确</div>';
+    return;
+  }
+  if (results.length > 30) {
+    listEl.innerHTML = '<div class="empty"><div class="big">🔍</div>匹配结果过多（' + results.length + ' 条），请输入更精确的姓名</div>';
+    return;
+  }
+  results.forEach(function(r){
+    var card = document.createElement('div');
+    card.className = 'result-card';
+    card.innerHTML =
+      '<span class="tag">第 ' + r.no + ' 号</span>' +
+      '<div class="name-row"><span class="parent">' + esc(r.parent) + '</span>' +
+      '<span class="child">' + esc(r.child) + '（' + esc(r.gender) + '）</span></div>' +
+      '<span class="race">🏅 比赛号 ' + esc(r.race_no) + '</span>';
+    listEl.appendChild(card);
+  });
+}
+
+function run() {
+  var q = kwEl.value.trim();
+  render(search(q), q);
+}
+
+document.getElementById('btn').addEventListener('click', run);
+kwEl.addEventListener('keydown', function(e){ if (e.key === 'Enter') run(); });
+
+document.getElementById('stats').textContent = '共 ' + DATA.length + ' 位儿童，' + new Set(DATA.map(function(r){return r.parent;})).size + ' 个家庭';
+document.getElementById('cnt').textContent = DATA.length;
+
+// auto focus for mobile friendliness (but not auto-triggering keyboard on WeChat scan)
+// initial hint
+listEl.innerHTML = '<div class="empty"><div class="big">🏃</div>欢迎使用号码查询<br>输入家长或孩子的姓名，即可查询比赛号码</div>';
+</script>
+</body>
+</html>
